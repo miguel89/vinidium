@@ -12,7 +12,9 @@ PLAYER4 = 4
 AIM = {'North': (-1, 0),
        'East': (0, 1),
        'South': (1, 0),
-       'West': (0, -1)}
+       'West': (0, -1),
+       'Stay': (0, 0)
+       }
 
 class HeroTile:
     def __init__(self, id):
@@ -27,6 +29,7 @@ class Game:
         self.state = state
         self.board = Board(state['game']['board'])
         self.heroes = [Hero(state['game']['heroes'][i]) for i in range(len(state['game']['heroes']))]
+        self.me = Hero(state['hero'])
         self.mines_locs = {}
         self.heroes_locs = {}
         self.taverns_locs = set([])
@@ -68,10 +71,28 @@ class Board:
         self.tiles = self.__parseTiles(board['tiles'])
 
     def passable(self, loc):
-        'true if can not walk through'
+        'true if can walk through'
         x, y = loc
         pos = self.tiles[x][y]
         return (pos != WALL) and (pos != TAVERN) and not isinstance(pos, MineTile)
+
+    def is_wall(self, loc):
+        'true if loc is wall'
+        x, y = loc
+        pos = self.tiles[x][y]
+        return pos == WALL
+
+    def is_tavern(self, loc):
+        'true if loc is tavern'
+        x, y = loc
+        pos = self.tiles[x][y]
+        return pos == TAVERN
+
+    def is_mine(self, loc):
+        'true if loc is mine'
+        x, y = loc
+        pos = self.tiles[x][y]
+        return isinstance(pos, MineTile)
 
     def to(self, loc, direction):
         'calculate a new location given the direction'
@@ -90,8 +111,8 @@ class Board:
 
 class Hero:
     def __init__(self, hero):
+        self.heroId = hero['id']
         self.name = hero['name']
         self.pos = hero['pos']
         self.life = hero['life']
         self.gold = hero['gold']
-

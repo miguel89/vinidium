@@ -5,7 +5,13 @@ import os
 import sys
 import requests
 import re
-from bot import RandomBot, SlowBot
+import webbrowser
+
+import customlogging, logging
+logger = logging.getLogger(__name__)
+
+from bot import NannanBot
+
 
 TIMEOUT=15
 
@@ -31,8 +37,8 @@ def get_new_game_state(session, server_url, key, mode='training', number_of_turn
 
 def move(session, url, direction):
     """Send a move to the server
-    
-    Moves can be one of: 'Stay', 'North', 'South', 'East', 'West' 
+
+    Moves can be one of: 'Stay', 'North', 'South', 'East', 'West'
     """
 
     try:
@@ -62,6 +68,7 @@ def start(server_url, key, mode, turns, bot):
     # Get the initial state
     state = get_new_game_state(session, server_url, key, mode, turns)
     print("Playing at: " + state['viewUrl'])
+    webbrowser.open(state['viewUrl'])
 
     while not is_finished(state):
         # Some nice output ;)
@@ -90,7 +97,7 @@ if __name__ == "__main__":
         if(mode == "training"):
             number_of_games = 1
             number_of_turns = int(sys.argv[3])
-        else: 
+        else:
             number_of_games = int(sys.argv[3])
             number_of_turns = 300 # Ignored in arena mode
 
@@ -100,5 +107,5 @@ if __name__ == "__main__":
             server_url = "http://vindinium.org"
 
         for i in range(number_of_games):
-            start(server_url, key, mode, number_of_turns, RandomBot())
+            start(server_url, key, mode, number_of_turns, NannanBot())
             print("\nGame finished: %d/%d" % (i+1, number_of_games))
