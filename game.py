@@ -1,5 +1,8 @@
 import re
 
+import logging
+logger = logging.getLogger(__name__)
+
 TAVERN = 0
 AIR = -1
 WALL = -2
@@ -30,6 +33,7 @@ class Game:
         self.board = Board(state['game']['board'])
         self.heroes = [Hero(state['game']['heroes'][i]) for i in range(len(state['game']['heroes']))]
         self.me = Hero(state['hero'])
+        self.my_intpos = self.me.pos['x'], self.me.pos['y']
         self.mines_locs = {}
         self.heroes_locs = {}
         self.taverns_locs = set([])
@@ -111,6 +115,8 @@ class Board:
 
 class Hero:
     def __init__(self, hero):
+        if hero['crashed'] == 'true':
+            logger.fatal("Hero crashed.")
         self.heroId = hero['id']
         self.name = hero['name']
         self.pos = hero['pos']
