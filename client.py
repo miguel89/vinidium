@@ -10,7 +10,7 @@ import webbrowser
 import customlogging, logging
 logger = logging.getLogger(__name__)
 
-from bot import NannanBot
+from bot import *
 
 
 TIMEOUT=15
@@ -107,5 +107,5 @@ if __name__ == "__main__":
             server_url = "http://vindinium.org"
 
         for i in range(number_of_games):
-            start(server_url, key, mode, number_of_turns, NannanBot())
+            start(server_url, key, mode, number_of_turns, OutOfBoundsBot())
             print("\nGame finished: %d/%d" % (i+1, number_of_games))
