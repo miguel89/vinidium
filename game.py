@@ -74,11 +74,23 @@ class Board:
         self.size = board['size']
         self.tiles = self.__parseTiles(board['tiles'])
 
-    def passable(self, loc):
+    def is_passable(self, loc):
         'true if can walk through'
         x, y = loc
         pos = self.tiles[x][y]
-        return (pos != WALL) and (pos != TAVERN) and not isinstance(pos, MineTile)
+        return ((pos != WALL) and (pos != TAVERN) and not isinstance(pos, MineTile)
+                and x < self.size and x > 0
+                and y < self.size and y > 0)
+
+    def can_step_to(self, loc):
+        """" true if can move in this direction
+
+        This differs from is_passable because it returns True for taverns and mines,
+        because stepping to these is legal, even though the hero doesn't move.
+        """
+        x, y = loc
+        pos = self.tiles[x][y]
+        return self.is_passable(loc) or self.is_tavern(loc) or self.is_mine(loc)
 
     def is_wall(self, loc):
         'true if loc is wall'
@@ -99,16 +111,14 @@ class Board:
         return isinstance(pos, MineTile)
 
     def to(self, loc, direction):
-        'calculate a new location given the direction'
+        """calculate a new location given the direction
+
+        New location may not be a legal location, if e.g. the location moves off the map
+        """
         row, col = loc
         d_row, d_col = AIM[direction]
         n_row = row + d_row
-        if (n_row < 0): n_row = 0
-        if (n_row > self.size): n_row = self.size
         n_col = col + d_col
-        if (n_col < 0): n_col = 0
-        if (n_col > self.size): n_col = self.size
-
         return (n_row, n_col)
 
 
