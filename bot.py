@@ -6,8 +6,18 @@ import logging
 logger = logging.getLogger(__name__)
 from game import Game, Hero
 
+north = 'North'
+south = 'South'
+east = 'East'
+west = 'West'
 
-class Bot:
+opposite = { north: south,
+             south: north,
+             east: west,
+             west: east
+}
+
+class Bot(object):
     """ abstract base class for bots, which may someday contain shared functionality?"""
     def move(self, state):
         raise NotImplementedError
@@ -22,10 +32,6 @@ class RandomBot(Bot):
     def move(self, state):
         return random.choice(['East','West','North','South'])
 
-
-## the rest of these bots currently (11 Sept) suffer from the same bug: they don't know
-#  not to try to move off the edge of the map.  Postponed the easy fix in order to contemplate
-#  improvements to the world model.
 
 class RandomBot2(Bot):
     """ a bot that moves in a random direction every turn, but doesn't try to
@@ -45,19 +51,19 @@ class RandomBot3(Bot):
     """ a bot that moves in a random direction every turn, but doesn't try to move
     somewhere impassible, and prefers not to immediately backtrack """
     def __init__(self):
-        self.last_move = 'North'
+        self.last_move = south
 
     def move(self, state):
-        moves = [i for i in ['East', 'West', 'North', 'South'] if i != self.last_move]
+        moves = [i for i in ['East', 'West', 'North', 'South'] if i != opposite[self.last_move]]
         random.shuffle(moves)
-        moves = [self.last_move] + moves
+        moves = [opposite[self.last_move]] + moves
         logger.debug("moves = %s" % str(moves))
         game = Game(state)
         while True:
             next_move = moves.pop()
             logger.debug("next move = %s" % next_move)
             new_loc = game.board.to(game.my_intpos, next_move)
-            if not game.board.is_wall(new_loc):
+            if game.board.can_step_to(new_loc):
                 self.last_move = next_move
                 return next_move
 
@@ -74,12 +80,12 @@ class RandomBot4(Bot):
         east =  'East', game.board.to(game.my_intpos, 'East')
         west = 'West', game.board.to(game.my_intpos, 'West')
         moves = [north, south, east, west]
-        not_been = [i for i in moves if self.been_there[i[1]]]
-        been = [i for i in moves if not self.been_there[i[1]]]
+        not_been = [i for i in moves if not self.been_there[i[1]]]
+        been = [i for i in moves if self.been_there[i[1]]]
 
         random.shuffle(not_been)
         random.shuffle(been)
-        moves = [x for x in been + not_been if  not game.board.is_wall(x[1]) ]
+        moves = [x for x in been + not_been if game.board.can_step_to(x[1]) ]
         logger.debug("moves: %s" % str(moves))
         while True:
             next_move = moves.pop()
