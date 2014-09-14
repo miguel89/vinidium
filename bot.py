@@ -1,141 +1,90 @@
 import random
 import time
 from collections import defaultdict
+import pdb
 
 import logging
 logger = logging.getLogger(__name__)
 from game import Game, Hero
+import ai
+
+__all__ = ["RandomBot", "AStarBot"]
 
 north = 'North'
 south = 'South'
 east = 'East'
 west = 'West'
+stay = 'Stay'
 
-opposite = { north: south,
-             south: north,
-             east: west,
-             west: east
-}
+
+AIM = {'North': (-1, 0),
+       'East': (0, 1),
+       'South': (1, 0),
+       'West': (0, -1),
+       'Stay': (0, 0)
+       }
+
+
 
 class Bot(object):
-    """ abstract base class for bots, which may someday contain shared functionality?"""
+    """abstract base class for bots"""
+    def __init__(self, gamestate):
+        logger.debug("Creating bot: {0}".format(self.__class__.__name__))
+        self.game = Game(gamestate)
+        self.board = self.game.board
+        self.me = Hero(gamestate['hero'])
+        self.pos = self.me.pos['x'], self.me.pos['y']
+
+        self.possible_moves = [m for m in [stay, north, south, east, west]
+                               if self.board.can_step_to(self._move_to(m))]
+        logger.debug("possible moves: {0}".format(str(self.possible_moves)))
+
+
+    def update_state(self, gamestate):  # duplicates constructor for now, but this can likely be made more efficient
+        logger.debug("updating with new game state")
+        self.game = Game(gamestate)
+        self.board = self.game.board
+        self.me = Hero(gamestate['hero'])
+        self.pos = self.me.pos['x'], self.me.pos['y']
+
+        self.possible_moves = [m for m in [stay, north, south, east, west]
+                               if self.board.can_step_to(self._move_to(m))]
+        logger.debug("possible moves: {0}".format(str(self.possible_moves)))
+
+
+    def _move_to(self, direction):
+        dir_coords = AIM[direction]
+        return (self.pos[0] + dir_coords[0], self.pos[1] + dir_coords[1])
+
     def move(self, state):
         raise NotImplementedError
 
-class OutOfBoundsBot(Bot):
-    def move(self, state):
-        game = Game(state)
-        return 'North'
+    ### Functions to locate interesting things on the board
+
+    def nearest_mine_location(self):
+        return sorted([i for i in self.game.mines_locs.keys()], key=(lambda x: ai.manhattan(self.pos, x)))[0]
+
+    def nearest_others_mine_location(self):
+        mines = [i for i in self.game.mines_locs.keys() if self.game.mines_locs[i] != str(self.me.heroId)] # heroId stored as int, mine owner as string
+        return sorted(mines, key=(lambda x: ai.manhattan(self.pos, x)))[0]
+
+
 
 class RandomBot(Bot):
     """ a bot that moves in a random direction every turn"""
     def move(self, state):
-        return random.choice(['East','West','North','South'])
+        return random.choice(self.possible_moves)
 
 
-class RandomBot2(Bot):
-    """ a bot that moves in a random direction every turn, but doesn't try to
-    move somewhere impassible """
 
-    def move(self, state):
-        moves = ['East', 'West', 'North', 'South']
-        random.shuffle(moves)
-        game = Game(state)
-        while True:
-            next_move = moves.pop()
-            new_loc = game.board.to(game.my_intpos, next_move)
-            if not game.board.is_wall(new_loc):
-                return next_move
-
-class RandomBot3(Bot):
-    """ a bot that moves in a random direction every turn, but doesn't try to move
-    somewhere impassible, and prefers not to immediately backtrack """
-    def __init__(self):
-        self.last_move = south
+class AStarBot(Bot):
+    def __init__(self, gamestate):
+        super().__init__(gamestate)
+        self.goal_stack = []
 
     def move(self, state):
-        moves = [i for i in ['East', 'West', 'North', 'South'] if i != opposite[self.last_move]]
-        random.shuffle(moves)
-        moves = [opposite[self.last_move]] + moves
-        logger.debug("moves = %s" % str(moves))
-        game = Game(state)
-        while True:
-            next_move = moves.pop()
-            logger.debug("next move = %s" % next_move)
-            new_loc = game.board.to(game.my_intpos, next_move)
-            if game.board.can_step_to(new_loc):
-                self.last_move = next_move
-                return next_move
-
-class RandomBot4(Bot):
-    """ RandomBot3 but remember where you've been and prefer not to go there again. """
-    def __init__(self):
-        self.been_there = defaultdict(lambda: False)
-
-    def move(self, state):
-        game = Game(state)
-        self.been_there[game.my_intpos] = True
-        north = 'North', game.board.to(game.my_intpos, 'North')
-        south = 'South', game.board.to(game.my_intpos, 'South')
-        east =  'East', game.board.to(game.my_intpos, 'East')
-        west = 'West', game.board.to(game.my_intpos, 'West')
-        moves = [north, south, east, west]
-        not_been = [i for i in moves if not self.been_there[i[1]]]
-        been = [i for i in moves if self.been_there[i[1]]]
-
-        random.shuffle(not_been)
-        random.shuffle(been)
-        moves = [x for x in been + not_been if game.board.can_step_to(x[1]) ]
-        logger.debug("moves: %s" % str(moves))
-        while True:
-            next_move = moves.pop()
-            if not game.board.is_wall(next_move[1]):
-                logger.debug("next move = %s" % str(next_move))
-                return next_move[0]
-
-
-
-class NannanBot(Bot):
-    def __init__(self):
-        self.last_move = None
-        self.last_move_reason = None
-        self.move_dirs = ['East','West','North','South']
-        #stay = ['Stay']
-
-    def move(self, state):
-        self.last_move, self.last_move_reason = self._move(state)
-        logger.info("moving %s because %s" % (self.last_move, self.last_move_reason))
-        return self.last_move
-
-    def _move(self, state):
-        game = Game(state)
-
-        def _can_move(my_pos, dir):
-            """ if I'm in my_pos, can I move in dir?"""
-            new_loc = game.board.to(my_pos, dir)
-            return not game.board.is_wall(new_loc)
-
-
-        me = game.me
-        me.intpos = me.pos['x'], me.pos['y']
-        possible_moves = [d for d in self.move_dirs if _can_move(me.intpos, d)]
-        logger.info("can move from %s to %s" % (str(me.intpos), str(possible_moves)))
-
-        for direction in possible_moves:
-            next_coords = game.board.to(me.intpos, direction)
-            if game.mines_locs.get(game.board.to(me.intpos, direction)) not in [str(me.heroId), None]:
-                return direction, "mine"
-            if self.last_move != direction and game.board.to(me.intpos, direction) in game.taverns_locs and me.life < 80:
-                return direction, "tavern"
-
-
-        next_dir = possible_moves.pop()
-
-        while(1):
-            next_move = game.board.to(me.intpos, next_dir)
-            if game.board.passable(next_move):
-                logger.info("turn %s/%s: %s -> %s" % (state['game']['turn'], state['game']['maxTurns'], str(me.intpos), str(next_dir)))
-                self.last_move = next_dir
-                return next_dir, ""
-            else:
-                next_dir = possible_moves.pop()
+        goal_loc = self.nearest_others_mine_location()
+        logger.debug("Nearest others' mine to me is at {0}".format(goal_loc))
+        self.path = [d for (d, p) in ai.astar(self.pos, goal_loc, self.game.board.is_passable)]
+        logger.debug("Path: %s" % str(self.path))
+        return self.path.pop(0)

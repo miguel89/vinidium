@@ -3,6 +3,8 @@ import re
 import logging
 logger = logging.getLogger(__name__)
 
+import util
+
 TAVERN = 0
 AIR = -1
 WALL = -2
@@ -12,22 +14,17 @@ PLAYER2 = 2
 PLAYER3 = 3
 PLAYER4 = 4
 
-AIM = {'North': (-1, 0),
-       'East': (0, 1),
-       'South': (1, 0),
-       'West': (0, -1),
-       'Stay': (0, 0)
-       }
-
-class HeroTile:
+class HeroTile(object):
     def __init__(self, id):
         self.id = id
 
-class MineTile:
+class MineTile(object):
     def __init__(self, heroId = None):
         self.heroId = heroId
 
-class Game:
+class Game(object):
+    """A model of the entire game state.  This is instantiated once per game.
+    """
     def __init__(self, state):
         self.state = state
         self.board = Board(state['game']['board'])
@@ -47,9 +44,7 @@ class Game:
                 elif (obj == TAVERN):
                     self.taverns_locs.add((row, col))
 
-
-
-class Board:
+class Board(object):
     def __parseTile(self, str):
         if (str == '  '):
             return AIR
@@ -77,10 +72,10 @@ class Board:
     def is_passable(self, loc):
         'true if can walk through'
         x, y = loc
+        if (x > self.size-1 or x < 0 or
+            y > self.size-1 or y < 0): return False
         pos = self.tiles[x][y]
-        return ((pos != WALL) and (pos != TAVERN) and not isinstance(pos, MineTile)
-                and x < self.size and x > 0
-                and y < self.size and y > 0)
+        return (pos != WALL) and (pos != TAVERN) and not isinstance(pos, MineTile)
 
     def can_step_to(self, loc):
         """" true if can move in this direction
@@ -89,7 +84,6 @@ class Board:
         because stepping to these is legal, even though the hero doesn't move.
         """
         x, y = loc
-        pos = self.tiles[x][y]
         return self.is_passable(loc) or self.is_tavern(loc) or self.is_mine(loc)
 
     def is_wall(self, loc):
@@ -110,20 +104,8 @@ class Board:
         pos = self.tiles[x][y]
         return isinstance(pos, MineTile)
 
-    def to(self, loc, direction):
-        """calculate a new location given the direction
 
-        New location may not be a legal location, if e.g. the location moves off the map
-        """
-        row, col = loc
-        d_row, d_col = AIM[direction]
-        n_row = row + d_row
-        n_col = col + d_col
-        return (n_row, n_col)
-
-
-
-class Hero:
+class Hero(object):
     def __init__(self, hero):
         if hero['crashed'] == 'true':
             logger.fatal("Hero crashed.")

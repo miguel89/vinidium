@@ -15,18 +15,22 @@ LOGCONFIG = {
         'simple': {
             'format' : '%(levelname)s %(message)s'
         },
-        'moves': {
-            'format' : '%(botname)s %(game)s %(movenum)s %(movedir)s %(movereason)s'
-        },
     }, # formatters
 
     'handlers' : {
         'rotatingfile' : {
-            'level' : 'NOTSET',
+            'level' : 'DEBUG',
             'class' : 'logging.handlers.RotatingFileHandler',
             'formatter' : 'verbose',
             'filename' : 'logs/log.log',
         },
+        'everything' : {
+            'level' : 'NOTSET',
+            'class' : 'logging.handlers.RotatingFileHandler',
+            'formatter' : 'verbose',
+            'filename' : 'logs/everything.log',
+        },
+
         'console': {
             'level': 'INFO',
             'class': 'logging.StreamHandler',
@@ -35,7 +39,7 @@ LOGCONFIG = {
     }, # handlers
 
     'root' : {
-        'handlers' : ['rotatingfile','console'],
+        'handlers' : ['rotatingfile','console', 'everything'],
         'propagate': True,
         'level': 'NOTSET'
     } # loggers
