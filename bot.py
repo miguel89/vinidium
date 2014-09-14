@@ -1,6 +1,7 @@
 import random
 import time
 from collections import defaultdict
+import itertools
 import pdb
 
 import logging
@@ -69,6 +70,8 @@ class Bot(object):
         return sorted(mines, key=(lambda x: ai.manhattan(self.pos, x)))[0]
 
 
+    def nearest_tavern_location(self):
+        return sorted(self.game.taverns_locs, key=(lambda x: ai.manhattan(self.pos, x)))[0]
 
 class RandomBot(Bot):
     """ a bot that moves in a random direction every turn"""
@@ -80,11 +83,12 @@ class RandomBot(Bot):
 class AStarBot(Bot):
     def __init__(self, gamestate):
         super().__init__(gamestate)
-        self.goal_stack = []
-
+        self.goals = itertools.cycle([self.nearest_others_mine_location,
+                                      self.nearest_tavern_location])
+        self.path = []
     def move(self, state):
-        goal_loc = self.nearest_others_mine_location()
-        logger.debug("Nearest others' mine to me is at {0}".format(goal_loc))
-        self.path = [d for (d, p) in ai.astar(self.pos, goal_loc, self.game.board.is_passable)]
+        if self.path == []: # no current path
+            next_goal = next(self.goals)
+            self.path = ai.astar(self.pos, next_goal(), self.game.board.is_passable)
         logger.debug("Path: %s" % str(self.path))
         return self.path.pop(0)
