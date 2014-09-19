@@ -1,11 +1,17 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 import os
 import sys
 import requests
 import re
-from bot import RandomBot, RandomBot2, SlowBot
+import webbrowser
+
+import customlogging, logging
+logger = logging.getLogger(__name__)
+
+from bot import *
+from util import boardify
 
 TIMEOUT=15
 
@@ -31,8 +37,8 @@ def get_new_game_state(session, server_url, key, mode='training', number_of_turn
 
 def move(session, url, direction):
     """Send a move to the server
-    
-    Moves can be one of: 'Stay', 'North', 'South', 'East', 'West' 
+
+    Moves can be one of: 'Stay', 'North', 'South', 'East', 'West'
     """
 
     try:
@@ -61,7 +67,11 @@ def start(server_url, key, mode, turns, bot):
         print(u'Connected and waiting for other players to join…')
     # Get the initial state
     state = get_new_game_state(session, server_url, key, mode, turns)
+    logger.log(1,"\n" + boardify(state['game']['board']['size'],state['game']['board']['tiles']))
+    bot = bot(state)
+
     print("Playing at: " + state['viewUrl'])
+    webbrowser.open(state['viewUrl']) # open a browser to show the game
 
     while not is_finished(state):
         # Some nice output ;)
@@ -74,6 +84,8 @@ def start(server_url, key, mode, turns, bot):
         # Send the move and receive the updated game state
         url = state['playUrl']
         state = move(session, url, direction)
+        logger.log(1,"\n" + boardify(state['game']['board']['size'],state['game']['board']['tiles']))
+        bot.update_state(state)
 
     # Clean up the session
     session.close()
@@ -90,7 +102,7 @@ if __name__ == "__main__":
         if(mode == "training"):
             number_of_games = 1
             number_of_turns = int(sys.argv[3])
-        else: 
+        else:
             number_of_games = int(sys.argv[3])
             number_of_turns = 300 # Ignored in arena mode
 
@@ -100,5 +112,5 @@ if __name__ == "__main__":
             server_url = "http://vindinium.org"
 
         for i in range(number_of_games):
-            start(server_url, key, mode, number_of_turns, RandomBot2())
+            start(server_url, key, mode, number_of_turns, AStarBot)
             print("\nGame finished: %d/%d" % (i+1, number_of_games))

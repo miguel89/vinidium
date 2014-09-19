@@ -1,5 +1,10 @@
 import re
 
+import logging
+logger = logging.getLogger(__name__)
+
+import util
+
 TAVERN = 0
 AIR = -1
 WALL = -2
@@ -9,24 +14,23 @@ PLAYER2 = 2
 PLAYER3 = 3
 PLAYER4 = 4
 
-AIM = {'North': (-1, 0),
-       'East': (0, 1),
-       'South': (1, 0),
-       'West': (0, -1)}
-
-class HeroTile:
+class HeroTile(object):
     def __init__(self, id):
         self.id = id
 
-class MineTile:
+class MineTile(object):
     def __init__(self, heroId = None):
         self.heroId = heroId
 
-class Game:
+class Game(object):
+    """A model of the entire game state.  This is instantiated once per game.
+    """
     def __init__(self, state):
         self.state = state
         self.board = Board(state['game']['board'])
         self.heroes = [Hero(state['game']['heroes'][i]) for i in range(len(state['game']['heroes']))]
+        self.me = Hero(state['hero'])
+        self.my_intpos = self.me.pos['x'], self.me.pos['y']
         self.mines_locs = {}
         self.heroes_locs = {}
         self.taverns_locs = set([])
@@ -42,9 +46,7 @@ class Game:
                 elif (obj == TAVERN):
                     self.taverns_locs.add((row, col))
 
-
-
-class Board:
+class Board(object):
     def __parseTile(self, str):
         if (str == '  '):
             return AIR
@@ -72,6 +74,8 @@ class Board:
     def is_passable(self, loc):
         'true if can walk through'
         x, y = loc
+        if (x > self.size-1 or x < 0 or
+            y > self.size-1 or y < 0): return False
         pos = self.tiles[x][y]
         return (pos != WALL) or (pos != TAVERN) or not isinstance(pos, MineTile)
 
@@ -93,25 +97,40 @@ class Board:
         pos = self.tiles[x][y]
         return isinstance(pos, MineTile)
 
-    def to(self, loc, direction):
-        'calculate a new location given the direction'
-        row, col = loc
-        d_row, d_col = AIM[direction]
-        n_row = row + d_row
-        if (n_row < 0): n_row = 0
-        if (n_row > self.size): n_row = self.size
-        n_col = col + d_col
-        if (n_col < 0): n_col = 0
-        if (n_col > self.size): n_col = self.size
+    def can_step_to(self, loc):
+        """" true if can move in this direction
 
-        return (n_row, n_col)
+        This differs from is_passable because it returns True for taverns and mines,
+        because stepping to these is legal, even though the hero doesn't move.
+        """
+        x, y = loc
+        return self.is_passable(loc) or self.is_tavern(loc) or self.is_mine(loc)
+
+    def is_wall(self, loc):
+        'true if loc is wall'
+        x, y = loc
+        pos = self.tiles[x][y]
+        return pos == WALL
+
+    def is_tavern(self, loc):
+        'true if loc is tavern'
+        x, y = loc
+        pos = self.tiles[x][y]
+        return pos == TAVERN
+
+    def is_mine(self, loc):
+        'true if loc is mine'
+        x, y = loc
+        pos = self.tiles[x][y]
+        return isinstance(pos, MineTile)
 
 
-
-class Hero:
+class Hero(object):
     def __init__(self, hero):
+        if hero['crashed'] == 'true':
+            logger.fatal("Hero crashed.")
+        self.heroId = hero['id']
         self.name = hero['name']
         self.pos = hero['pos']
         self.life = hero['life']
         self.gold = hero['gold']
-
