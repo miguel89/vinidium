@@ -30,6 +30,8 @@ class Game:
         self.mines_locs = {}
         self.heroes_locs = {}
         self.taverns_locs = set([])
+        self.me = Hero(state['hero'])
+        self.my_intpos = self.me.pos['x'], self.me.pos['y']
         for row in range(len(self.board.tiles)):
             for col in range(len(self.board.tiles[row])):
                 obj = self.board.tiles[row][col]
@@ -67,11 +69,29 @@ class Board:
         self.size = board['size']
         self.tiles = self.__parseTiles(board['tiles'])
 
-    def passable(self, loc):
-        'true if can not walk through'
+    def is_passable(self, loc):
+        'true if can walk through'
         x, y = loc
         pos = self.tiles[x][y]
-        return (pos != WALL) and (pos != TAVERN) and not isinstance(pos, MineTile)
+        return (pos != WALL) or (pos != TAVERN) or not isinstance(pos, MineTile)
+
+    def is_wall(self, loc):
+        'true if loc is wall'
+        x, y = loc
+        pos = self.tiles[x][y]
+        return pos == WALL
+
+    def is_tavern(self, loc):
+        'true if loc is tavern'
+        x, y = loc
+        pos = self.tiles[x][y]
+        return pos == TAVERN
+
+    def is_mine(self, loc):
+        'true if loc is mine'
+        x, y = loc
+        pos = self.tiles[x][y]
+        return isinstance(pos, MineTile)
 
     def to(self, loc, direction):
         'calculate a new location given the direction'
