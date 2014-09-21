@@ -32,7 +32,7 @@ AIM = {'North': (-1, 0),
        'Stay': (0, 0)
        }
 
-       
+
 class Bot:
     """abstract base class for bots"""
     def __init__(self, gamestate):
@@ -85,7 +85,7 @@ class RandomBot(Bot):
         dirs = ['Stay', 'North', 'South', 'East', 'West']
         return random.choice(dirs)
 
-class RandomBot2(Bot):
+class NewRandomBot(Bot):
     """ moves in a random direction each turn, but it doesn't try to move
         somewhere impossible
     """
@@ -98,18 +98,10 @@ class RandomBot2(Bot):
             new_loc = game.board.to(game.my_intpos, next_move)
             if not game.board.is_wall(new_loc):
                 return next_move
-    
-
-class RandomBot(Bot):
-    """ a bot that moves in a random direction every turn"""
-    def move(self, state):
-        return random.choice(self.possible_moves)
-
-
 
 class AStarBot(Bot):
     def __init__(self, gamestate):
-        super().__init__(gamestate)
+        Bot.__init__(self, gamestate)
         self.goals = itertools.cycle([self.nearest_others_mine_location,
                                       self.nearest_tavern_location])
         self.path = []
